@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "937066668052",
+    "project_id": "smartcard-7e9f4",
+    "storage_bucket": "smartcard-7e9f4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:937066668052:android:f7a6ce2a42d065f2f34701",
+        "android_client_info": {
+          "package_name": "com.example.smartcard"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDNjvoVkt-ykpu5pimIJhlWwnWhdap3ys0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
