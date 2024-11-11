@@ -207,7 +207,7 @@ fun FlashcardScreen(deckName: String) {
                 .background(color = DarkGray, shape = RoundedCornerShape(16.dp)),
             contentAlignment = Alignment.Center
         ){ Text(
-            text = "Question 1 : How many cars are in the garage?",
+            text = "Question 1 : What type of language is Kotlin?",
             modifier = Modifier.padding(16.dp),
             textAlign = TextAlign.Center,
             fontSize = 25.sp,
