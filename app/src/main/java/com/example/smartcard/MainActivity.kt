@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,7 +34,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.smartcard.ui.theme.SmartCardTheme
 import androidx.compose.runtime.*
-
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.ui.text.style.TextAlign
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,28 +51,43 @@ class MainActivity : ComponentActivity() {
             FlashDeck("Data Structures", "This is the flash deck for my data structures class"),
             FlashDeck("Algorithms", "This is the flash deck for my algorithms class"),
         )
+
         setContent {
             SmartCardTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    // Use Column to stack the button and LazyColumn
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding)
-                    ) {
-                        NewDeck(
-                            modifier = Modifier.padding(top = 25.dp),
-                            onAddDeck = { name, description ->
-                                decks.add(FlashDeck(name, description))
-                            }
-                        )
+                val navController = rememberNavController()
+                NavHost(navController = navController, startDestination = "home") {
+                    composable("home") {
+                        HomeScreen(decks, navController)
+                    }
+                    composable("flashcards/{deckName}") { backStackEntry ->
+                        val deckName = backStackEntry.arguments?.getString("deckName") ?: ""
+                        FlashcardScreen(deckName)
+                    }
+                }
+            }
+        }
+    }
+}
 
-                        // LazyColumn for displaying flash decks
-                        LazyColumn(modifier = Modifier.weight(1f)) {
-                            items(decks) { deck ->
-                                DeckView(deck)
-                            }
-                        }
+@Composable
+fun HomeScreen(decks: SnapshotStateList<FlashDeck>, navController: NavHostController) {
+    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            NewDeck(
+                modifier = Modifier.padding(top = 25.dp),
+                onAddDeck = { name, description ->
+                    decks.add(FlashDeck(name, description))
+                }
+            )
+
+            LazyColumn(modifier = Modifier.weight(1f)) {
+                items(decks) { deck ->
+                    DeckView(deck) {
+                        navController.navigate("flashcards/${deck.name}")
                     }
                 }
             }
@@ -82,17 +103,17 @@ fun NewDeck(
     var inputDeck by remember { mutableStateOf(false) }
     var deckDescription by remember { mutableStateOf("") }
     var deckName by remember { mutableStateOf("") }
+
     Column(
         modifier = modifier
-            .fillMaxWidth(), // Ensure the Column fills the width of the screen
-        horizontalAlignment = Alignment.CenterHorizontally // Center-align the button horizontally
+            .fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Button(onClick = { inputDeck = true /*TODO*/ }) {
+        Button(onClick = { inputDeck = true }) {
             Text(text = "Add new deck")
         }
 
         if(inputDeck){
-
             Spacer(modifier = Modifier.padding(8.dp))
 
             Text(
@@ -100,9 +121,7 @@ fun NewDeck(
                 fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.displaySmall
             )
-
             Spacer(modifier = Modifier.padding(8.dp))
-
             TextField(
                 modifier = Modifier.fillMaxWidth(),
                 value = deckName,
@@ -115,9 +134,7 @@ fun NewDeck(
                 fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.displaySmall
             )
-
             Spacer(modifier = Modifier.padding(8.dp))
-
             TextField(
                 modifier = Modifier.fillMaxWidth(),
                 value = deckDescription,
@@ -128,8 +145,8 @@ fun NewDeck(
             Button(onClick = {
                 onAddDeck(deckName, deckDescription)
                 inputDeck = false
-                deckName = "" // Clear deck name
-                deckDescription = "" // Clear deck description
+                deckName = ""
+                deckDescription = ""
             }) {
                 Text(text = "Confirm")
             }
@@ -138,11 +155,12 @@ fun NewDeck(
 }
 
 @Composable
-fun DeckView(deck: FlashDeck) {
+fun DeckView(deck: FlashDeck, onDeckClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(12.dp)
+            .clickable { onDeckClick() }
     ) {
         Column {
             Text(
@@ -156,6 +174,28 @@ fun DeckView(deck: FlashDeck) {
                 fontSize = 12.sp
             )
         }
+    }
+}
+
+@Composable
+fun FlashcardScreen(deckName: String) {
+    // This composable represents the screen where you can add flashcards to a deck.
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+            .padding(top = 30.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+
+    ) {
+        Text(
+            text = "Flashcards for $deckName",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+
+        // Add additional UI components for managing flashcards here.
     }
 }
 
