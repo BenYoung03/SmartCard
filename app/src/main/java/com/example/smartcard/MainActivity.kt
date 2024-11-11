@@ -59,6 +59,10 @@ class MainActivity : ComponentActivity() {
             FlashDeck("Data Structures", "This is the flash deck for my data structures class"),
         )
 
+        val flashcards = mutableStateListOf(
+            Flashcard("What type of programming language is Kotlin?", "Compiled language", decks.first { it.name == "Programming Languages" })
+        )
+
         setContent {
             SmartCardTheme {
                 val navController = rememberNavController()
@@ -68,7 +72,8 @@ class MainActivity : ComponentActivity() {
                     }
                     composable("flashcards/{deckName}") { backStackEntry ->
                         val deckName = backStackEntry.arguments?.getString("deckName") ?: ""
-                        FlashcardScreen(deckName)
+                        val selectedDeck = decks.find { it.name == deckName } // Find the deck by name
+                        selectedDeck?.let { FlashcardScreen(it, flashcards) }
                     }
                 }
             }
@@ -183,8 +188,8 @@ fun DeckView(deck: FlashDeck, onDeckClick: () -> Unit) {
 }
 
 @Composable
-fun FlashcardScreen(deckName: String) {
-    // This composable represents the screen where you can add flashcards to a deck.
+fun FlashcardScreen(deck: FlashDeck, flashcards: SnapshotStateList<Flashcard>) {
+    val curFlashcards = flashcards.filter { it.curDeck == deck }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -194,25 +199,34 @@ fun FlashcardScreen(deckName: String) {
 
     ) {
         Text(
-            text = "Flashcards for $deckName",
+            text = "Flashcards for ${deck.name}",
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )
-        Box(
-            modifier = Modifier
-                .size(300.dp)
-                .padding(16.dp)
-                .border(width = 4.dp, color = Gray, shape = RoundedCornerShape(16.dp))
-                .background(color = DarkGray, shape = RoundedCornerShape(16.dp)),
-            contentAlignment = Alignment.Center
-        ){ Text(
-            text = "Question 1 : What type of language is Kotlin?",
-            modifier = Modifier.padding(16.dp),
-            textAlign = TextAlign.Center,
-            fontSize = 25.sp,
-            color = Color.White
-            )
+
+        LazyColumn {
+            items(curFlashcards) {flashcard ->
+                var currentText by remember { mutableStateOf(flashcard.front) }
+                Box(
+                    modifier = Modifier
+                        .size(300.dp)
+                        .padding(16.dp)
+                        .border(width = 4.dp, color = Gray, shape = RoundedCornerShape(16.dp))
+                        .background(color = DarkGray, shape = RoundedCornerShape(16.dp))
+                        .clickable {
+                            currentText = if(currentText == flashcard.front) flashcard.back else flashcard.front
+                        },
+                    contentAlignment = Alignment.Center
+                ){ Text(
+                    text = currentText,
+                    modifier = Modifier.padding(16.dp),
+                    textAlign = TextAlign.Center,
+                    fontSize = 25.sp,
+                    color = Color.White
+                )
+                }
+            }
         }
     }
 }
