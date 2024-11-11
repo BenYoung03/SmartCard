@@ -49,7 +49,6 @@ class MainActivity : ComponentActivity() {
         val decks = mutableStateListOf(
             FlashDeck("Programming Languages", "This is the flash deck for my programming languages class"),
             FlashDeck("Data Structures", "This is the flash deck for my data structures class"),
-            FlashDeck("Algorithms", "This is the flash deck for my algorithms class"),
         )
 
         setContent {
