@@ -4,6 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,11 +15,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -35,6 +40,9 @@ import androidx.compose.ui.unit.sp
 import com.example.smartcard.ui.theme.SmartCardTheme
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Color.Companion.DarkGray
+import androidx.compose.ui.graphics.Color.Companion.Gray
 import androidx.compose.ui.text.style.TextAlign
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -118,7 +126,6 @@ fun NewDeck(
             Text(
                 text = "Deck Name",
                 fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.displaySmall
             )
             Spacer(modifier = Modifier.padding(8.dp))
             TextField(
@@ -131,7 +138,6 @@ fun NewDeck(
             Text(
                 text = "Deck Description",
                 fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.displaySmall
             )
             Spacer(modifier = Modifier.padding(8.dp))
             TextField(
@@ -193,8 +199,21 @@ fun FlashcardScreen(deckName: String) {
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )
-
-        // Add additional UI components for managing flashcards here.
+        Box(
+            modifier = Modifier
+                .size(300.dp)
+                .padding(16.dp)
+                .border(width = 4.dp, color = Gray, shape = RoundedCornerShape(16.dp))
+                .background(color = DarkGray, shape = RoundedCornerShape(16.dp)),
+            contentAlignment = Alignment.Center
+        ){ Text(
+            text = "Question 1 : How many cars are in the garage?",
+            modifier = Modifier.padding(16.dp),
+            textAlign = TextAlign.Center,
+            fontSize = 25.sp,
+            color = Color.White
+            )
+        }
     }
 }
 
