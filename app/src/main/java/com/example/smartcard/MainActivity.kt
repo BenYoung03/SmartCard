@@ -4,26 +4,70 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.smartcard.ui.theme.SmartCardTheme
+import androidx.compose.runtime.*
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        val decks = mutableStateListOf(
+            FlashDeck("Programming Languages", "This is the flash deck for my programming languages class"),
+            FlashDeck("Data Structures", "This is the flash deck for my data structures class"),
+            FlashDeck("Algorithms", "This is the flash deck for my algorithms class"),
+        )
         setContent {
             SmartCardTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                    // Use Column to stack the button and LazyColumn
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                    ) {
+                        NewDeck(
+                            modifier = Modifier.padding(top = 25.dp),
+                            onAddDeck = { name, description ->
+                                decks.add(FlashDeck(name, description))
+                            }
+                        )
+
+                        // LazyColumn for displaying flash decks
+                        LazyColumn(modifier = Modifier.weight(1f)) {
+                            items(decks) { deck ->
+                                DeckView(deck)
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -31,17 +75,89 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
+fun NewDeck(
+    modifier: Modifier = Modifier,
+    onAddDeck: (String, String) -> Unit
+) {
+    var inputDeck by remember { mutableStateOf(false) }
+    var deckDescription by remember { mutableStateOf("") }
+    var deckName by remember { mutableStateOf("") }
+    Column(
         modifier = modifier
-    )
-}
+            .fillMaxWidth(), // Ensure the Column fills the width of the screen
+        horizontalAlignment = Alignment.CenterHorizontally // Center-align the button horizontally
+    ) {
+        Button(onClick = { inputDeck = true /*TODO*/ }) {
+            Text(text = "Add new deck")
+        }
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    SmartCardTheme {
-        Greeting("Android")
+        if(inputDeck){
+
+            Spacer(modifier = Modifier.padding(8.dp))
+
+            Text(
+                text = "Deck Name",
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.displaySmall
+            )
+
+            Spacer(modifier = Modifier.padding(8.dp))
+
+            TextField(
+                modifier = Modifier.fillMaxWidth(),
+                value = deckName,
+                onValueChange = { deckName = it },
+                placeholder = { Text(text = "e.g. Data Structures") },
+            )
+
+            Text(
+                text = "Deck Description",
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.displaySmall
+            )
+
+            Spacer(modifier = Modifier.padding(8.dp))
+
+            TextField(
+                modifier = Modifier.fillMaxWidth(),
+                value = deckDescription,
+                onValueChange = { deckDescription = it },
+                placeholder = { Text(text = "e.g. This is what the deck is about") },
+            )
+
+            Button(onClick = {
+                onAddDeck(deckName, deckDescription)
+                inputDeck = false
+                deckName = "" // Clear deck name
+                deckDescription = "" // Clear deck description
+            }) {
+                Text(text = "Confirm")
+            }
+        }
     }
 }
+
+@Composable
+fun DeckView(deck: FlashDeck) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(12.dp)
+    ) {
+        Column {
+            Text(
+                text = deck.name,
+                modifier = Modifier.padding(12.dp),
+                fontSize = 20.sp
+            )
+            Text(
+                text = deck.description,
+                modifier = Modifier.padding(12.dp),
+                fontSize = 12.sp
+            )
+        }
+    }
+}
+
+
+
