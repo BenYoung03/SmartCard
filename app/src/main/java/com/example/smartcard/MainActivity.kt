@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,12 +22,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,6 +51,13 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.TopAppBarDefaults
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -81,20 +91,40 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+//material13 experimental for TopAppBar to work
+@OptIn(ExperimentalMaterial3Api::class)
+
 @Composable
 fun HomeScreen(decks: SnapshotStateList<FlashDeck>, navController: NavHostController) {
-    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                title = { Text(text = "SmartCard", color = Color.White, fontWeight = FontWeight.Bold) },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+            )
+        },
+
+    )
+
+    { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            NewDeck(
-                modifier = Modifier.padding(top = 25.dp),
-                onAddDeck = { name, description ->
-                    decks.add(FlashDeck(name, description))
-                }
+
+            Text(
+                text = "My Decks",
+                fontSize = 24.sp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
             )
+
 
             LazyColumn(modifier = Modifier.weight(1f)) {
                 items(decks) { deck ->
@@ -103,6 +133,15 @@ fun HomeScreen(decks: SnapshotStateList<FlashDeck>, navController: NavHostContro
                     }
                 }
             }
+
+            NewDeck(
+                modifier = Modifier.padding(top = 25.dp),
+                onAddDeck = { name, description ->
+                    decks.add(FlashDeck(name, description))
+                }
+            )
+
+
         }
     }
 }
@@ -116,120 +155,144 @@ fun NewDeck(
     var deckDescription by remember { mutableStateOf("") }
     var deckName by remember { mutableStateOf("") }
 
-    Column(
-        modifier = modifier
-            .fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
+    //Button to inputdeck
+    Button(
+        onClick = { inputDeck = true },
+        modifier = modifier.padding(18.dp)
     ) {
-        Button(onClick = { inputDeck = true }) {
-            Text(text = "Add new deck")
+        Text(text = "Add new deck", fontSize = 18.sp )
+    }
+
+    //Display Dialog if input deck is true
+    if (inputDeck) {
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { inputDeck = false }
+        ) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surface,
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Create New Deck",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    TextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        value = deckName,
+                        onValueChange = { deckName = it },
+                        placeholder = { Text(text = "Title of your deck") },
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    TextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        value = deckDescription,
+                        onValueChange = { deckDescription = it },
+                        placeholder = { Text(text = "e.g. This is what the deck is about") },
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Button(
+                        onClick = {
+                            onAddDeck(deckName, deckDescription)
+                            inputDeck = false
+                            deckName = ""
+                            deckDescription = ""
+                        }
+                    ) {
+                        Text(text = "Confirm")
+                    }
+
+                }
+
+            }
+
         }
+    }
+}
 
-        if(inputDeck){
-            Spacer(modifier = Modifier.padding(8.dp))
 
-            Text(
-                text = "Deck Name",
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(modifier = Modifier.padding(8.dp))
-            TextField(
-                modifier = Modifier.fillMaxWidth(),
-                value = deckName,
-                onValueChange = { deckName = it },
-                placeholder = { Text(text = "e.g. Data Structures") },
-            )
-
-            Text(
-                text = "Deck Description",
-                fontWeight = FontWeight.Bold,
-            )
-            Spacer(modifier = Modifier.padding(8.dp))
-            TextField(
-                modifier = Modifier.fillMaxWidth(),
-                value = deckDescription,
-                onValueChange = { deckDescription = it },
-                placeholder = { Text(text = "e.g. This is what the deck is about") },
-            )
-
-            Button(onClick = {
-                onAddDeck(deckName, deckDescription)
-                inputDeck = false
-                deckName = ""
-                deckDescription = ""
-            }) {
-                Text(text = "Confirm")
+ @Composable
+    fun DeckView(deck: FlashDeck, onDeckClick: () -> Unit) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+                .clickable { onDeckClick() }
+        ) {
+            Column {
+                Text(
+                    text = deck.name,
+                    modifier = Modifier.padding(12.dp),
+                    fontSize = 20.sp
+                )
+                Text(
+                    text = deck.description,
+                    modifier = Modifier.padding(12.dp),
+                    fontSize = 12.sp
+                )
             }
         }
     }
-}
 
-@Composable
-fun DeckView(deck: FlashDeck, onDeckClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(12.dp)
-            .clickable { onDeckClick() }
-    ) {
-        Column {
+    @Composable
+    fun FlashcardScreen(deck: FlashDeck, flashcards: SnapshotStateList<Flashcard>) {
+        val curFlashcards = flashcards.filter { it.curDeck == deck }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+                .padding(top = 30.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+
+        ) {
             Text(
-                text = deck.name,
-                modifier = Modifier.padding(12.dp),
-                fontSize = 20.sp
+                text = "Flashcards for ${deck.name}",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
             )
-            Text(
-                text = deck.description,
-                modifier = Modifier.padding(12.dp),
-                fontSize = 12.sp
-            )
-        }
-    }
-}
 
-@Composable
-fun FlashcardScreen(deck: FlashDeck, flashcards: SnapshotStateList<Flashcard>) {
-    val curFlashcards = flashcards.filter { it.curDeck == deck }
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-            .padding(top = 30.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-
-    ) {
-        Text(
-            text = "Flashcards for ${deck.name}",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center
-        )
-
-        LazyColumn {
-            items(curFlashcards) {flashcard ->
-                var currentText by remember { mutableStateOf(flashcard.front) }
-                Box(
-                    modifier = Modifier
-                        .size(300.dp)
-                        .padding(16.dp)
-                        .border(width = 4.dp, color = Gray, shape = RoundedCornerShape(16.dp))
-                        .background(color = DarkGray, shape = RoundedCornerShape(16.dp))
-                        .clickable {
-                            currentText = if(currentText == flashcard.front) flashcard.back else flashcard.front
-                        },
-                    contentAlignment = Alignment.Center
-                ){ Text(
-                    text = currentText,
-                    modifier = Modifier.padding(16.dp),
-                    textAlign = TextAlign.Center,
-                    fontSize = 25.sp,
-                    color = Color.White
-                )
+            LazyColumn {
+                items(curFlashcards) { flashcard ->
+                    var currentText by remember { mutableStateOf(flashcard.front) }
+                    Box(
+                        modifier = Modifier
+                            .size(300.dp)
+                            .padding(16.dp)
+                            .border(width = 4.dp, color = Gray, shape = RoundedCornerShape(16.dp))
+                            .background(color = DarkGray, shape = RoundedCornerShape(16.dp))
+                            .clickable {
+                                currentText =
+                                    if (currentText == flashcard.front) flashcard.back else flashcard.front
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = currentText,
+                            modifier = Modifier.padding(16.dp),
+                            textAlign = TextAlign.Center,
+                            fontSize = 25.sp,
+                            color = Color.White
+                        )
+                    }
                 }
             }
         }
     }
-}
 
 
 
