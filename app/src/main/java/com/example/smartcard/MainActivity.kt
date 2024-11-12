@@ -4,7 +4,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.annotation.StringRes
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,11 +15,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -34,48 +39,51 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.smartcard.ui.theme.SmartCardTheme
 import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Color.Companion.DarkGray
+import androidx.compose.ui.graphics.Color.Companion.Gray
+import androidx.compose.ui.text.style.TextAlign
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-
-
-enum class FlashCardsScreen(){
-    Start,
-    Cards,
-    Quiz,
-    Profile
-}
-
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        val decks = mutableStateListOf(
+            FlashDeck("Programming Languages", "This is the flash deck for my programming languages class"),
+            FlashDeck("Data Structures", "This is the flash deck for my data structures class"),
+        )
+
+        val flashcards = mutableStateListOf(
+            Flashcard("What type of programming language is Kotlin?", "Compiled language", decks.first { it.name == "Programming Languages" })
+        )
+
         setContent {
-            MyApp()
+            SmartCardTheme {
+                val navController = rememberNavController()
+                NavHost(navController = navController, startDestination = "home") {
+                    composable("home") {
+                        HomeScreen(decks, navController)
+                    }
+                    composable("flashcards/{deckName}") { backStackEntry ->
+                        val deckName = backStackEntry.arguments?.getString("deckName") ?: ""
+                        val selectedDeck = decks.find { it.name == deckName } // Find the deck by name
+                        selectedDeck?.let { FlashcardScreen(it, flashcards) }
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
-fun MyApp(){
-
-    val decks = remember {
-        mutableStateListOf(
-            FlashDeck(
-                "Programming Languages",
-                "This is the flash deck for my programming languages class"
-            ),
-            FlashDeck("Data Structures", "This is the flash deck for my data structures class"),
-            FlashDeck("Algorithms", "This is the flash deck for my algorithms class"),
-        )
-    }
+fun HomeScreen(decks: SnapshotStateList<FlashDeck>, navController: NavHostController) {
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-
-        // Use Column to stack the button and LazyColumn
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -88,30 +96,15 @@ fun MyApp(){
                 }
             )
 
-            // LazyColumn for displaying flash decks
             LazyColumn(modifier = Modifier.weight(1f)) {
                 items(decks) { deck ->
-                    DeckView(deck)
+                    DeckView(deck) {
+                        navController.navigate("flashcards/${deck.name}")
+                    }
                 }
             }
         }
-
     }
-
-}
-
-
-
-//Easier way to visualize UI elements of the app through the DESIGN tab
-@Preview(showBackground = true, name = "New Deck Preview")
-@Composable
-fun NewDeckPreview() {
-    NewDeck(
-        onAddDeck = { name, description ->
-            // Sample placeholder action for preview
-            println("New deck added with name: $name and description: $description")
-        }
-    )
 }
 
 @Composable
@@ -122,27 +115,24 @@ fun NewDeck(
     var inputDeck by remember { mutableStateOf(false) }
     var deckDescription by remember { mutableStateOf("") }
     var deckName by remember { mutableStateOf("") }
+
     Column(
         modifier = modifier
-            .fillMaxWidth(), // Ensure the Column fills the width of the screen
-        horizontalAlignment = Alignment.CenterHorizontally // Center-align the button horizontally
+            .fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Button(onClick = { inputDeck = true /*TODO*/ }) {
+        Button(onClick = { inputDeck = true }) {
             Text(text = "Add new deck")
         }
 
         if(inputDeck){
-
             Spacer(modifier = Modifier.padding(8.dp))
 
             Text(
                 text = "Deck Name",
                 fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.displaySmall
             )
-
             Spacer(modifier = Modifier.padding(8.dp))
-
             TextField(
                 modifier = Modifier.fillMaxWidth(),
                 value = deckName,
@@ -153,11 +143,8 @@ fun NewDeck(
             Text(
                 text = "Deck Description",
                 fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.displaySmall
             )
-
             Spacer(modifier = Modifier.padding(8.dp))
-
             TextField(
                 modifier = Modifier.fillMaxWidth(),
                 value = deckDescription,
@@ -168,37 +155,22 @@ fun NewDeck(
             Button(onClick = {
                 onAddDeck(deckName, deckDescription)
                 inputDeck = false
-                deckName = "" // Clear deck name
-                deckDescription = "" // Clear deck description
+                deckName = ""
+                deckDescription = ""
             }) {
                 Text(text = "Confirm")
             }
         }
     }
-
-
-}
-
-//Easier way to visualize UI elements of the app through the DESIGN tab
-@Preview(showBackground = true, name = "Deck View Preview")
-@Composable
-fun DeckViewPreview(){
-    val sampleDeck = FlashDeck(
-        name = "Sample Deck",
-        description = "This is the description of the sample deck"
-
-    )
-
-    DeckView(deck = sampleDeck)
-
 }
 
 @Composable
-fun DeckView(deck: FlashDeck) {
+fun DeckView(deck: FlashDeck, onDeckClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(12.dp)
+            .clickable { onDeckClick() }
     ) {
         Column {
             Text(
@@ -215,7 +187,49 @@ fun DeckView(deck: FlashDeck) {
     }
 }
 
+@Composable
+fun FlashcardScreen(deck: FlashDeck, flashcards: SnapshotStateList<Flashcard>) {
+    val curFlashcards = flashcards.filter { it.curDeck == deck }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+            .padding(top = 30.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
 
+    ) {
+        Text(
+            text = "Flashcards for ${deck.name}",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+
+        LazyColumn {
+            items(curFlashcards) {flashcard ->
+                var currentText by remember { mutableStateOf(flashcard.front) }
+                Box(
+                    modifier = Modifier
+                        .size(300.dp)
+                        .padding(16.dp)
+                        .border(width = 4.dp, color = Gray, shape = RoundedCornerShape(16.dp))
+                        .background(color = DarkGray, shape = RoundedCornerShape(16.dp))
+                        .clickable {
+                            currentText = if(currentText == flashcard.front) flashcard.back else flashcard.front
+                        },
+                    contentAlignment = Alignment.Center
+                ){ Text(
+                    text = currentText,
+                    modifier = Modifier.padding(16.dp),
+                    textAlign = TextAlign.Center,
+                    fontSize = 25.sp,
+                    color = Color.White
+                )
+                }
+            }
+        }
+    }
+}
 
 
 
