@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.smartcard.ui.theme.SmartCardTheme
 import androidx.compose.runtime.*
+import androidx.navigation.compose.NavHost
 
 
 class MainActivity : ComponentActivity() {
@@ -48,6 +49,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             SmartCardTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+
+
+
                     // Use Column to stack the button and LazyColumn
                     Column(
                         modifier = Modifier
@@ -72,6 +76,18 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+}
+
+//Easier way to visualize UI elements of the app through the DESIGN tab
+@Preview(showBackground = true, name = "New Deck Preview")
+@Composable
+fun NewDeckPreview() {
+    NewDeck(
+        onAddDeck = { name, description ->
+            // Sample placeholder action for preview
+            println("New deck added with name: $name and description: $description")
+        }
+    )
 }
 
 @Composable
@@ -135,6 +151,20 @@ fun NewDeck(
             }
         }
     }
+}
+
+//Easier way to visualize UI elements of the app through the DESIGN tab
+@Preview(showBackground = true, name = "Deck View Preview")
+@Composable
+fun DeckViewPreview(){
+    val sampleDeck = FlashDeck(
+        name = "Sample Deck",
+        description = "This is the description of the sample deck"
+
+    )
+
+    DeckView(deck = sampleDeck)
+
 }
 
 @Composable
