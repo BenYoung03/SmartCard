@@ -1,5 +1,3 @@
 package com.example.smartcard
 
-class Flashcard(val front: String, val back: String, val curDeck: FlashDeck) {
-
-}
+data class FlashCard(val question: String, val answer: String, val deck: FlashDeck){}

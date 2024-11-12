@@ -4,6 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -64,6 +66,8 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 
 
 class MainActivity : ComponentActivity() {
@@ -76,10 +80,6 @@ class MainActivity : ComponentActivity() {
             FlashDeck("Data Structures", "This is the flash deck for my data structures class"),
         )
 
-        val flashcards = mutableStateListOf(
-            Flashcard("What type of programming language is Kotlin?", "Compiled language", decks.first { it.name == "Programming Languages" })
-        )
-
         setContent {
             SmartCardTheme {
                 val navController = rememberNavController()
@@ -89,14 +89,23 @@ class MainActivity : ComponentActivity() {
                     }
                     composable("flashcards/{deckName}") { backStackEntry ->
                         val deckName = backStackEntry.arguments?.getString("deckName") ?: ""
-                        val selectedDeck = decks.find { it.name == deckName } // Find the deck by name
-                        selectedDeck?.let { FlashcardScreen(it, flashcards) }
+                        val selectedDeck = decks.find { it.name == deckName }
+                        selectedDeck?.let {
+                            DeckDetailView(
+                                deck = it,
+                                onAddCard = { question, answer ->
+                                    it.cards.add(FlashCard(question, answer, it))
+                                },
+                                onBack = { navController.popBackStack() }
+                            )
+                        }
                     }
                 }
             }
         }
     }
 }
+
 
 //material13 experimental for TopAppBar to work
 @OptIn(ExperimentalMaterial3Api::class)
@@ -234,30 +243,6 @@ fun NewDeck(
     }
 }
 
-
-// @Composable
-//    fun DeckView(deck: FlashDeck, onDeckClick: () -> Unit) {
-//        Card(
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .padding(12.dp)
-//                .clickable { onDeckClick() }
-//        ) {
-//            Column {
-//                Text(
-//                    text = deck.name,
-//                    modifier = Modifier.padding(12.dp),
-//                    fontSize = 20.sp
-//                )
-//                Text(
-//                    text = deck.description,
-//                    modifier = Modifier.padding(12.dp),
-//                    fontSize = 12.sp
-//                )
-//            }
-//        }
-//    }
-
 @Composable
 fun DeckView(deck: FlashDeck, onDeckClick: () -> Unit, onEditClick: () -> Unit, onDeleteClick: () -> Unit) {
     var expanded by remember { mutableStateOf(false) } // State to control dropdown menu
@@ -321,56 +306,145 @@ fun DeckView(deck: FlashDeck, onDeckClick: () -> Unit, onEditClick: () -> Unit, 
 }
 
 
+//    @Composable
+//    fun FlashcardScreen(deck: FlashDeck, flashcards: SnapshotStateList<Flashcard>) {
+//        val curFlashcards = flashcards.filter { it.curDeck == deck }
+//        Column(
+//            modifier = Modifier
+//                .fillMaxSize()
+//                .padding(16.dp)
+//                .padding(top = 30.dp),
+//            horizontalAlignment = Alignment.CenterHorizontally
+//
+//        ) {
+//            Text(
+//                text = "Flashcards for ${deck.name}",
+//                fontSize = 24.sp,
+//                fontWeight = FontWeight.Bold,
+//                textAlign = TextAlign.Center
+//            )
+//
+//            LazyColumn {
+//                items(curFlashcards) { flashcard ->
+//                    var currentText by remember { mutableStateOf(flashcard.front) }
+//                    Box(
+//                        modifier = Modifier
+//                            .size(300.dp)
+//                            .padding(16.dp)
+//                            .border(width = 4.dp, color = Gray, shape = RoundedCornerShape(16.dp))
+//                            .background(color = DarkGray, shape = RoundedCornerShape(16.dp))
+//                            .clickable {
+//                                currentText =
+//                                    if (currentText == flashcard.front) flashcard.back else flashcard.front
+//                            },
+//                        contentAlignment = Alignment.Center
+//                    ) {
+//                        Text(
+//                            text = currentText,
+//                            modifier = Modifier.padding(16.dp),
+//                            textAlign = TextAlign.Center,
+//                            fontSize = 25.sp,
+//                            color = Color.White
+//                        )
+//                    }
+//                }
+//            }
+//        }
+//    }
+
+@Composable
+fun DeckDetailView(deck: FlashDeck, onAddCard: (String, String) -> Unit, onBack: () -> Unit) {
+    var inputCard by remember { mutableStateOf(false) }
+    var cardQuestion by remember { mutableStateOf("") }
+    var cardAnswer by remember { mutableStateOf("") }
+
+    Column(modifier = Modifier.fillMaxSize()) {
 
 
+        Button(onClick = { onBack() }) {
+            Text("Back to Decks")
+        }
 
+        Text(text = deck.name, style = MaterialTheme.typography.headlineMedium, modifier = Modifier.padding(12.dp))
 
+        if (inputCard) {
+            TextField(value = cardQuestion, onValueChange = { cardQuestion = it }, placeholder = { Text("Card Question") })
+            TextField(value = cardAnswer, onValueChange = { cardAnswer = it }, placeholder = { Text("Card Answer") })
+            Button(onClick = {
+                onAddCard(cardQuestion, cardAnswer)
+                inputCard = false
+                cardQuestion = ""
+                cardAnswer = ""
+            }) {
+                Text(text = "Add Card")
+            }
+        } else {
+            Button(onClick = { inputCard = true }) {
+                Text(text = "Add New Card")
+            }
+        }
 
-    @Composable
-    fun FlashcardScreen(deck: FlashDeck, flashcards: SnapshotStateList<Flashcard>) {
-        val curFlashcards = flashcards.filter { it.curDeck == deck }
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-                .padding(top = 30.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-
-        ) {
-            Text(
-                text = "Flashcards for ${deck.name}",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
-
-            LazyColumn {
-                items(curFlashcards) { flashcard ->
-                    var currentText by remember { mutableStateOf(flashcard.front) }
-                    Box(
-                        modifier = Modifier
-                            .size(300.dp)
-                            .padding(16.dp)
-                            .border(width = 4.dp, color = Gray, shape = RoundedCornerShape(16.dp))
-                            .background(color = DarkGray, shape = RoundedCornerShape(16.dp))
-                            .clickable {
-                                currentText =
-                                    if (currentText == flashcard.front) flashcard.back else flashcard.front
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = currentText,
-                            modifier = Modifier.padding(16.dp),
-                            textAlign = TextAlign.Center,
-                            fontSize = 25.sp,
-                            color = Color.White
-                        )
-                    }
-                }
+        LazyColumn {
+            items(deck.cards) { card ->
+                CardView(card)
             }
         }
     }
+}
+
+@Composable
+fun CardView(card: FlashCard) {
+    var isQuestionVisible by remember { mutableStateOf(true) }
+    var rotationAngle by remember { mutableStateOf(0f) }
+    val animatedRotationAngle by animateFloatAsState(
+        targetValue = rotationAngle,
+        animationSpec = tween(durationMillis = 600)
+    )
+
+    Card(
+        modifier = Modifier
+            .padding(16.dp)
+            .clickable {
+                rotationAngle += 180f
+                isQuestionVisible = !isQuestionVisible
+            }
+            .graphicsLayer {
+                rotationY = animatedRotationAngle
+                cameraDistance = 8 * density
+                scaleX = if (animatedRotationAngle % 360 > 90 && animatedRotationAngle % 360 < 270) -1f else 1f // Flip the content on the Y-axis
+            }
+            .background(Color.White)
+            .fillMaxWidth(0.8f)
+            .height(200.dp)
+            .clip(MaterialTheme.shapes.medium)
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            if (animatedRotationAngle % 360 < 90 || animatedRotationAngle % 360 > 270) {
+                Text(
+                    text = "${card.question}",
+                    fontSize = 24.sp,
+                    modifier = Modifier.graphicsLayer {
+                        alpha = if (isQuestionVisible) 1f else 0f
+                    }
+                )
+            } else {
+                Text(
+                    text = "${card.answer}",
+                    fontSize = 22.sp,
+                    modifier = Modifier.graphicsLayer {
+                        alpha = if (!isQuestionVisible) 1f else 0f
+                    }
+                )
+            }
+        }
+    }
+}
 
 
 
