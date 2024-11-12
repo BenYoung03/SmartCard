@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,49 +35,72 @@ import androidx.compose.ui.unit.sp
 import com.example.smartcard.ui.theme.SmartCardTheme
 import androidx.compose.runtime.*
 import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+
+
+enum class FlashCardsScreen(){
+    Start,
+    Cards,
+    Quiz,
+    Profile
+}
 
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
-        val decks = mutableStateListOf(
-            FlashDeck("Programming Languages", "This is the flash deck for my programming languages class"),
-            FlashDeck("Data Structures", "This is the flash deck for my data structures class"),
-            FlashDeck("Algorithms", "This is the flash deck for my algorithms class"),
-        )
         setContent {
-            SmartCardTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-
-
-
-                    // Use Column to stack the button and LazyColumn
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding)
-                    ) {
-                        NewDeck(
-                            modifier = Modifier.padding(top = 25.dp),
-                            onAddDeck = { name, description ->
-                                decks.add(FlashDeck(name, description))
-                            }
-                        )
-
-                        // LazyColumn for displaying flash decks
-                        LazyColumn(modifier = Modifier.weight(1f)) {
-                            items(decks) { deck ->
-                                DeckView(deck)
-                            }
-                        }
-                    }
-                }
-            }
+            MyApp()
         }
     }
 }
+
+@Composable
+fun MyApp(){
+
+    val decks = remember {
+        mutableStateListOf(
+            FlashDeck(
+                "Programming Languages",
+                "This is the flash deck for my programming languages class"
+            ),
+            FlashDeck("Data Structures", "This is the flash deck for my data structures class"),
+            FlashDeck("Algorithms", "This is the flash deck for my algorithms class"),
+        )
+    }
+    Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+
+        // Use Column to stack the button and LazyColumn
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            NewDeck(
+                modifier = Modifier.padding(top = 25.dp),
+                onAddDeck = { name, description ->
+                    decks.add(FlashDeck(name, description))
+                }
+            )
+
+            // LazyColumn for displaying flash decks
+            LazyColumn(modifier = Modifier.weight(1f)) {
+                items(decks) { deck ->
+                    DeckView(deck)
+                }
+            }
+        }
+
+    }
+
+}
+
+
 
 //Easier way to visualize UI elements of the app through the DESIGN tab
 @Preview(showBackground = true, name = "New Deck Preview")
@@ -151,6 +175,8 @@ fun NewDeck(
             }
         }
     }
+
+
 }
 
 //Easier way to visualize UI elements of the app through the DESIGN tab
@@ -188,6 +214,8 @@ fun DeckView(deck: FlashDeck) {
         }
     }
 }
+
+
 
 
 
