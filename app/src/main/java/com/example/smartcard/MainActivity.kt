@@ -57,6 +57,13 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 
 
 class MainActivity : ComponentActivity() {
@@ -128,9 +135,12 @@ fun HomeScreen(decks: SnapshotStateList<FlashDeck>, navController: NavHostContro
 
             LazyColumn(modifier = Modifier.weight(1f)) {
                 items(decks) { deck ->
-                    DeckView(deck) {
-                        navController.navigate("flashcards/${deck.name}")
-                    }
+                    DeckView(deck = deck,
+                        onDeckClick = {navController.navigate("flashcards/${deck.name}")},
+                        onEditClick = { /* Handle edit action */ },
+                        onDeleteClick = { /* Handle delete action */ }
+
+                    )
                 }
             }
 
@@ -225,28 +235,96 @@ fun NewDeck(
 }
 
 
- @Composable
-    fun DeckView(deck: FlashDeck, onDeckClick: () -> Unit) {
-        Card(
+// @Composable
+//    fun DeckView(deck: FlashDeck, onDeckClick: () -> Unit) {
+//        Card(
+//            modifier = Modifier
+//                .fillMaxWidth()
+//                .padding(12.dp)
+//                .clickable { onDeckClick() }
+//        ) {
+//            Column {
+//                Text(
+//                    text = deck.name,
+//                    modifier = Modifier.padding(12.dp),
+//                    fontSize = 20.sp
+//                )
+//                Text(
+//                    text = deck.description,
+//                    modifier = Modifier.padding(12.dp),
+//                    fontSize = 12.sp
+//                )
+//            }
+//        }
+//    }
+
+@Composable
+fun DeckView(deck: FlashDeck, onDeckClick: () -> Unit, onEditClick: () -> Unit, onDeleteClick: () -> Unit) {
+    var expanded by remember { mutableStateOf(false) } // State to control dropdown menu
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(12.dp)
+            .clickable { onDeckClick() }
+    ) {
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp)
-                .clickable { onDeckClick() }
+                .padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+
+            IconButton(onClick = { expanded = true }) {
+                Icon(Icons.Default.MoreVert, contentDescription = "More options")
+            }
+
+            Column(modifier = Modifier.weight(1f)) { // Left side with deck details
                 Text(
                     text = deck.name,
-                    modifier = Modifier.padding(12.dp),
                     fontSize = 20.sp
                 )
                 Text(
                     text = deck.description,
-                    modifier = Modifier.padding(12.dp),
                     fontSize = 12.sp
+                )
+            }
+
+            Icon(
+                imageVector = Icons.Default.ArrowForward, // Arrow indicating navigation
+                contentDescription = "Go to Flashcards",
+                modifier = Modifier.padding(end = 8.dp)
+            )
+
+            // Dropdown menu for edit/delete options
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Edit") },
+                    onClick = {
+                        expanded = false
+                        onEditClick() //add edit functionality
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Delete") },
+                    onClick = {
+                        expanded = false
+                        onDeleteClick() //add delete functionality
+                    }
                 )
             }
         }
     }
+}
+
+
+
+
+
+
 
     @Composable
     fun FlashcardScreen(deck: FlashDeck, flashcards: SnapshotStateList<Flashcard>) {
