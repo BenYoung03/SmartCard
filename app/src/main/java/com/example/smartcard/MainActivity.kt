@@ -76,10 +76,20 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        /*
         val decks = mutableStateListOf(
             FlashDeck("Programming Languages", "This is the flash deck for my programming languages class"),
             FlashDeck("Data Structures", "This is the flash deck for my data structures class"),
         )
+        */
+
+        val decks = mutableStateListOf<FlashDeck>()
+
+        getDecks(onSuccess = { fetchedDecks ->
+            decks.addAll(fetchedDecks)
+            }, onFailure = { exception ->
+                Log.e("Firestore", "Error retrieving decks", exception)
+            })
 
         setContent {
             SmartCardTheme {
@@ -146,7 +156,6 @@ fun HomeScreen(decks: SnapshotStateList<FlashDeck>, navController: NavHostContro
                         onDeckClick = {navController.navigate("flashcards/${deck.name}")},
                         onEditClick = { /* Handle edit action */ },
                         onDeleteClick = { /* Handle delete action */ }
-
                     )
                 }
             }
@@ -357,6 +366,24 @@ fun DeckDetailView(deck: FlashDeck, onBack: () -> Unit) {
     var inputCard by remember { mutableStateOf(false) }
     var cardQuestion by remember { mutableStateOf("") }
     var cardAnswer by remember { mutableStateOf("") }
+    var cards by remember { mutableStateOf(listOf<FlashCard>()) }
+    var deckId by remember { mutableStateOf("") }
+
+    LaunchedEffect(deck.name) {
+        getDeckIdByName(deck.name, onSuccess = { id ->
+            deckId = id
+        }, onFailure = { exception ->
+            Log.e("Firestore", "Error retrieving deck ID", exception)
+        })
+    }
+
+    LaunchedEffect(deckId) {
+        getCardsForDeck(deckId, onSuccess = { fetchedCards ->
+            cards = fetchedCards
+        }, onFailure = { exception ->
+            Log.e("Firestore", "Error retrieving cards", exception)
+        })
+    }
 
     Column(modifier = Modifier.fillMaxSize()) {
 
@@ -388,7 +415,7 @@ fun DeckDetailView(deck: FlashDeck, onBack: () -> Unit) {
         }
 
         LazyColumn {
-            items(deck.cards) { card ->
+            items(cards) { card ->
                 CardView(card)
             }
         }
