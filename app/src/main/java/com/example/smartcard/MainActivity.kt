@@ -76,13 +76,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        /*
-        val decks = mutableStateListOf(
-            FlashDeck("Programming Languages", "This is the flash deck for my programming languages class"),
-            FlashDeck("Data Structures", "This is the flash deck for my data structures class"),
-        )
-        */
-
         val decks = mutableStateListOf<FlashDeck>()
 
         getDecks(onSuccess = { fetchedDecks ->
@@ -155,7 +148,7 @@ fun HomeScreen(decks: SnapshotStateList<FlashDeck>, navController: NavHostContro
                     DeckView(deck = deck,
                         onDeckClick = {navController.navigate("flashcards/${deck.name}")},
                         onEditClick = { /* Handle edit action */ },
-                        onDeleteClick = { /* Handle delete action */ }
+                        onDeleteClick = {  }
                     )
                 }
             }
@@ -166,8 +159,6 @@ fun HomeScreen(decks: SnapshotStateList<FlashDeck>, navController: NavHostContro
                     decks.add(FlashDeck(name, description))
                 }
             )
-
-
         }
     }
 }
