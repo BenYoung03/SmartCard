@@ -1,6 +1,7 @@
 package com.example.smartcard
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -93,9 +94,6 @@ class MainActivity : ComponentActivity() {
                         selectedDeck?.let {
                             DeckDetailView(
                                 deck = it,
-                                onAddCard = { question, answer ->
-                                    it.cards.add(FlashCard(question, answer, it))
-                                },
                                 onBack = { navController.popBackStack() }
                             )
                         }
@@ -227,6 +225,8 @@ fun NewDeck(
                     Button(
                         onClick = {
                             onAddDeck(deckName, deckDescription)
+                            //Firestore storage of deck
+                            addDeck(deckName, deckDescription)
                             inputDeck = false
                             deckName = ""
                             deckDescription = ""
@@ -353,13 +353,12 @@ fun DeckView(deck: FlashDeck, onDeckClick: () -> Unit, onEditClick: () -> Unit, 
 //    }
 
 @Composable
-fun DeckDetailView(deck: FlashDeck, onAddCard: (String, String) -> Unit, onBack: () -> Unit) {
+fun DeckDetailView(deck: FlashDeck, onBack: () -> Unit) {
     var inputCard by remember { mutableStateOf(false) }
     var cardQuestion by remember { mutableStateOf("") }
     var cardAnswer by remember { mutableStateOf("") }
 
     Column(modifier = Modifier.fillMaxSize()) {
-
 
         Button(onClick = { onBack() }) {
             Text("Back to Decks")
@@ -371,10 +370,14 @@ fun DeckDetailView(deck: FlashDeck, onAddCard: (String, String) -> Unit, onBack:
             TextField(value = cardQuestion, onValueChange = { cardQuestion = it }, placeholder = { Text("Card Question") })
             TextField(value = cardAnswer, onValueChange = { cardAnswer = it }, placeholder = { Text("Card Answer") })
             Button(onClick = {
-                onAddCard(cardQuestion, cardAnswer)
-                inputCard = false
-                cardQuestion = ""
-                cardAnswer = ""
+                getDeckIdByName(deck.name, onSuccess = { deckId ->
+                    addCard(cardQuestion, cardAnswer, deckId)
+                    inputCard = false
+                    cardQuestion = ""
+                    cardAnswer = ""
+                }, onFailure = { exception ->
+                    Log.e("Firestore", "Error retrieving deck ID", exception)
+                })
             }) {
                 Text(text = "Add Card")
             }
