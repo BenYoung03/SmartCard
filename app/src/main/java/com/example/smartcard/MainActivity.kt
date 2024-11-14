@@ -12,6 +12,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CardDefaults
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -61,6 +63,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.filled.MoreVert
@@ -78,7 +81,10 @@ class MainActivity : ComponentActivity() {
 
         val decks = mutableStateListOf<FlashDeck>()
 
+        //If decks are able to be retrieved, clear the current deck list and add all of the decks from the database to the list
+        //This ensures that the list of decks shown to the user is up to date with the database
         getDecks(onSuccess = { fetchedDecks ->
+            decks.clear()
             decks.addAll(fetchedDecks)
             }, onFailure = { exception ->
                 Log.e("Firestore", "Error retrieving decks", exception)
@@ -148,7 +154,11 @@ fun HomeScreen(decks: SnapshotStateList<FlashDeck>, navController: NavHostContro
                     DeckView(deck = deck,
                         onDeckClick = {navController.navigate("flashcards/${deck.name}")},
                         onEditClick = { /* Handle edit action */ },
-                        onDeleteClick = {  }
+                        onDeleteClick = { deleteDeck(
+                            deck.name,
+                            onSuccess = { Log.d("Firestore", "Deck deleted successfully") },
+                            onFailure = { exception -> Log.e("Firestore", "Error deleting deck", exception) }
+                        ) }
                     )
                 }
             }
@@ -352,6 +362,9 @@ fun DeckView(deck: FlashDeck, onDeckClick: () -> Unit, onEditClick: () -> Unit, 
 //        }
 //    }
 
+//aka. FlashCardView screen (all flashcards from deck)
+//material13 experimental for TopAppBar to work
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DeckDetailView(deck: FlashDeck, onBack: () -> Unit) {
     var inputCard by remember { mutableStateOf(false) }
@@ -370,65 +383,143 @@ fun DeckDetailView(deck: FlashDeck, onBack: () -> Unit) {
     }
 
     LaunchedEffect(deckId) {
-        getCardsForDeck(deckId, onSuccess = { fetchedCards ->
+        getCardsForDeck(deckId, false, onSuccess = { fetchedCards ->
             cards = fetchedCards
         }, onFailure = { exception ->
             Log.e("Firestore", "Error retrieving cards", exception)
         })
     }
 
-    if(isInQuizMode) {
-        QuizModeView(deck, onExitQuiz = { isInQuizMode = false })
+    if (isInQuizMode) {
+        QuizModeView(deck, onExitQuiz = { isInQuizMode = false },
+            onBack = { isInQuizMode = false })
     } else {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            topBar = {
+                TopAppBar(
+                    title = { Text(text = deck.name, color = Color.White, fontWeight = FontWeight.Bold) },
+                    navigationIcon = {
+                        IconButton(onClick = { onBack() }) {
+                            Icon(
+                                imageVector = Icons.Default.ArrowBack,
+                                contentDescription = "Back",
+                                tint = Color.White
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+            },
+            content = { innerPadding ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                ) {
+//                    Text(
+//                        text = "My Cards",
+//                        style = MaterialTheme.typography.headlineMedium,
+//                        modifier = Modifier.padding(12.dp)
+//                    )
 
-        Column(modifier = Modifier.fillMaxSize()) {
+                    // Dialog for adding a new card
+                    if (inputCard) {
+                        androidx.compose.ui.window.Dialog(
+                            onDismissRequest = { inputCard = false }
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = MaterialTheme.colorScheme.surface,
+                                modifier = Modifier.padding(16.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .padding(16.dp)
+                                        .fillMaxWidth(),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        text = "Create New Card",
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
 
-            Button(onClick = { onBack() }) {
-                Text("Back to Decks")
-            }
+                                    Spacer(modifier = Modifier.height(8.dp))
 
-            Text(
-                text = deck.name,
-                style = MaterialTheme.typography.headlineMedium,
-                modifier = Modifier.padding(12.dp)
-            )
+                                    TextField(
+                                        value = cardQuestion,
+                                        onValueChange = { cardQuestion = it },
+                                        placeholder = { Text("Card Side A") }
+                                    )
 
-            Button(onClick = { isInQuizMode = true}) {
-                Text("Start Quiz")
-            }
-            if (inputCard) {
-                TextField(
-                    value = cardQuestion,
-                    onValueChange = { cardQuestion = it },
-                    placeholder = { Text("Card Question") })
-                TextField(
-                    value = cardAnswer,
-                    onValueChange = { cardAnswer = it },
-                    placeholder = { Text("Card Answer") })
-                Button(onClick = {
-                    getDeckIdByName(deck.name, onSuccess = { deckId ->
-                        addCard(cardQuestion, cardAnswer, deckId)
-                        inputCard = false
-                        cardQuestion = ""
-                        cardAnswer = ""
-                    }, onFailure = { exception ->
-                        Log.e("Firestore", "Error retrieving deck ID", exception)
-                    })
-                }) {
-                    Text(text = "Add Card")
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    TextField(
+                                        value = cardAnswer,
+                                        onValueChange = { cardAnswer = it },
+                                        placeholder = { Text("Card Side B") }
+                                    )
+
+                                    Spacer(modifier = Modifier.height(16.dp))
+
+                                    Button(onClick = {
+                                        getDeckIdByName(deck.name, onSuccess = { deckId ->
+                                            addCard(cardQuestion, cardAnswer, deckId)
+                                            inputCard = false
+                                            cardQuestion = ""
+                                            cardAnswer = ""
+                                        }, onFailure = { exception ->
+                                            Log.e("Firestore", "Error retrieving deck ID", exception)
+                                        })
+                                    }) {
+                                        Text(text = "Add Card")
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Row for "Add New Card" and "Study" buttons
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Button(
+                            onClick = { inputCard = true },
+                            modifier = Modifier.padding(end = 8.dp), // Add padding to separate buttons
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0x803700B3) // Set the background color here
+                            )
+                        ) {
+                            Text(text = "+ New Card")
+                        }
+
+                        Button(
+                            onClick = { isInQuizMode = true },
+                            modifier = Modifier.padding(end = 8.dp), // Add padding to separate buttons
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0x803700B3) // Set the background color here
+                            )
+                        ) {
+                            Text(text = "Start Quiz")
+                        }
+                    }
+
+                    // Display list of cards
+                    LazyColumn {
+                        items(cards) { card ->
+                            CardView(card)
+                        }
+                    }
                 }
-            } else {
-                Button(onClick = { inputCard = true }) {
-                    Text(text = "Add New Card")
-                }
             }
-
-            LazyColumn {
-                items(cards) { card ->
-                    CardView(card)
-                }
-            }
-        }
+        )
     }
 }
 
@@ -438,7 +529,7 @@ fun CardView(card: FlashCard) {
     var rotationAngle by remember { mutableStateOf(0f) }
     val animatedRotationAngle by animateFloatAsState(
         targetValue = rotationAngle,
-        animationSpec = tween(durationMillis = 600)
+        animationSpec = tween(durationMillis = 500)
     )
 
     Card(
@@ -453,10 +544,12 @@ fun CardView(card: FlashCard) {
                 cameraDistance = 8 * density
                 scaleX = if (animatedRotationAngle % 360 > 90 && animatedRotationAngle % 360 < 270) -1f else 1f // Flip the content on the Y-axis
             }
-            .background(Color.White)
-            .fillMaxWidth(0.8f)
-            .height(200.dp)
-            .clip(MaterialTheme.shapes.medium)
+            .fillMaxWidth()
+            .height(200.dp),
+        elevation = CardDefaults.cardElevation(8.dp), // Elevation so the card has a shadow
+        colors = CardDefaults.cardColors(
+            containerColor = Color(0xFFF0F8FF)
+        )
     ) {
         Column(
             modifier = Modifier
@@ -467,7 +560,7 @@ fun CardView(card: FlashCard) {
         ) {
             if (animatedRotationAngle % 360 < 90 || animatedRotationAngle % 360 > 270) {
                 Text(
-                    text = "${card.question}",
+                    text = card.question,
                     fontSize = 24.sp,
                     modifier = Modifier.graphicsLayer {
                         alpha = if (isQuestionVisible) 1f else 0f
@@ -475,7 +568,7 @@ fun CardView(card: FlashCard) {
                 )
             } else {
                 Text(
-                    text = "${card.answer}",
+                    text = card.answer,
                     fontSize = 22.sp,
                     modifier = Modifier.graphicsLayer {
                         alpha = if (!isQuestionVisible) 1f else 0f
@@ -486,8 +579,10 @@ fun CardView(card: FlashCard) {
     }
 }
 
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun QuizModeView(deck: FlashDeck, onExitQuiz: () -> Unit) {
+fun QuizModeView(deck: FlashDeck, onExitQuiz: () -> Unit, onBack: () -> Unit) {
     var currentIndex by remember { mutableStateOf(0) }
     var isQuestionVisible by remember { mutableStateOf(true) }
     var rotationAngle by remember { mutableStateOf(0f) }
@@ -500,147 +595,163 @@ fun QuizModeView(deck: FlashDeck, onExitQuiz: () -> Unit) {
         animationSpec = tween(durationMillis = 600)
     )
 
+    // Load deck ID and cards
     LaunchedEffect(deck.name) {
-        getDeckIdByName(deck.name, onSuccess = { id ->
-            deckId = id
-        }, onFailure = { exception ->
+        getDeckIdByName(deck.name, onSuccess = { id -> deckId = id }, onFailure = { exception ->
             Log.e("Firestore", "Error retrieving deck ID", exception)
         })
     }
-
     LaunchedEffect(deckId) {
-        getCardsForDeck(deckId, onSuccess = { fetchedCards ->
-            cards = fetchedCards
-        }, onFailure = { exception ->
+        getCardsForDeck(deckId, true, onSuccess = { fetchedCards -> cards = fetchedCards }, onFailure = { exception ->
             Log.e("Firestore", "Error retrieving cards", exception)
         })
     }
 
-    // Handling the scenario where no cards are added to the deck
-    if (cards.isEmpty()) {
-        // Show a message if the deck is empty
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = "No cards available in this deck.",
-                fontSize = 20.sp,
-                color = MaterialTheme.colorScheme.error,  // Show an error message in red
-                modifier = Modifier.padding(bottom = 16.dp)
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                title = { Text(text = "Quiz Mode", color = Color.White, fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    IconButton(onClick = { onBack() }) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back",
+                            tint = Color.White
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
             )
-            Button(
-                onClick = { onExitQuiz() },
-                modifier = Modifier.padding(8.dp)
+        },
+        content = { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
-                Text(text = "Exit Quiz Mode")
-            }
-        }
-    } else {
-        // Main Quiz Mode UI when cards are available
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            // Navigation buttons (Previous, Next) with consistent styling
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Button(
-                    onClick = {
-                        if (currentIndex > 0) {
-                            currentIndex--
-                        } else {
-                            currentIndex = cards.size - 1 // Loop back to the last card
+                if (cards.isEmpty()) {
+                    Text(
+                        text = "No cards available in this deck yet!",
+                        fontSize = 20.sp,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                    Button(onClick = { onExitQuiz() }) {
+                        Text(text = "Exit Quiz Mode")
+                    }
+                } else {
+                    if (currentCard != null) {
+                        Card(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .clickable {
+                                    rotationAngle += 180f
+                                    isQuestionVisible = !isQuestionVisible
+                                }
+                                .graphicsLayer {
+                                    rotationY = animatedRotationAngle
+                                    cameraDistance = 8 * density
+                                    scaleX = if (animatedRotationAngle % 360 > 90 && animatedRotationAngle % 360 < 270) -1f else 1f
+                                }
+                                .fillMaxWidth(0.95f)
+                                .fillMaxHeight(0.5f)
+                                .clip(MaterialTheme.shapes.medium)
+                                .border(
+                                    width = 1.dp,
+                                    color = Color(0xFFB0BEC5),
+                                    shape = RoundedCornerShape(16.dp)
+                                ),
+                            elevation = CardDefaults.cardElevation(24.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFFF0F8FF)
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .padding(16.dp)
+                                    .fillMaxSize(),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                if (animatedRotationAngle % 360 < 90 || animatedRotationAngle % 360 > 270) {
+                                    Text(
+                                        text = currentCard.question,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 24.sp,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.graphicsLayer {
+                                            alpha = if (isQuestionVisible) 1f else 0f
+                                        }
+                                    )
+                                } else {
+                                    Text(
+                                        text = currentCard.answer,
+                                        fontSize = 22.sp,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.graphicsLayer {
+                                            alpha = if (!isQuestionVisible) 1f else 0f
+                                        }
+                                    )
+                                }
+                            }
                         }
-                    },
-                    modifier = Modifier.padding(8.dp)
-                ) {
-                    Text(text = "Previous Card")
-                }
-                Button(
-                    onClick = {
-                        if (currentIndex < cards.size - 1) {
-                            currentIndex++
-                        } else {
-                            currentIndex = 0 // Loop back to the first card
-                        }
-                    },
-                    modifier = Modifier.padding(8.dp)
-                ) {
-                    Text(text = "Next Card")
-                }
-            }
 
-            // Ensure card aesthetic is consistent with CardView
-            if (currentCard != null) {
-                Card(
-                    modifier = Modifier
-                        .padding(16.dp)
-                        .clickable {
-                            rotationAngle += 180f
-                            isQuestionVisible = !isQuestionVisible
-                        }
-                        .graphicsLayer {
-                            rotationY = animatedRotationAngle
-                            cameraDistance = 8 * density
-                            scaleX = if (animatedRotationAngle % 360 > 90 && animatedRotationAngle % 360 < 270) -1f else 1f // Flip the content on the Y-axis
-                        }
-                        .background(MaterialTheme.colorScheme.surface)  // Use the same surface color as before
-                        .fillMaxWidth(0.8f)
-                        .height(200.dp)
-                        .clip(MaterialTheme.shapes.medium)  // Consistent card shape
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .fillMaxSize(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        // Show question or answer based on rotation angle
-                        if (animatedRotationAngle % 360 < 90 || animatedRotationAngle % 360 > 270) {
-                            Text(
-                                text = currentCard.question,
-                                fontSize = 24.sp,
-                                color = MaterialTheme.colorScheme.onSurface,  // Text color consistent with theme
-                                modifier = Modifier.graphicsLayer {
-                                    alpha = if (isQuestionVisible) 1f else 0f
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                IconButton(
+                                    onClick = {
+                                        currentIndex = if (currentIndex > 0) currentIndex - 1 else cards.size - 1
+                                        isQuestionVisible = true // Reset to question side
+                                        rotationAngle = 0f // Reset rotation
+                                    },
+                                    modifier = Modifier.size(56.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowBack,
+                                        contentDescription = "Previous Card",
+                                        modifier = Modifier.size(56.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
                                 }
-                            )
-                        } else {
-                            Text(
-                                text = currentCard.answer,
-                                fontSize = 22.sp,
-                                color = MaterialTheme.colorScheme.onSurface,  // Text color consistent with theme
-                                modifier = Modifier.graphicsLayer {
-                                    alpha = if (!isQuestionVisible) 1f else 0f
+                                Text("Previous", fontSize = 12.sp)
+                            }
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                IconButton(
+                                    onClick = {
+                                        currentIndex = if (currentIndex < cards.size - 1) currentIndex + 1 else 0
+                                        isQuestionVisible = true // Reset to question side
+                                        rotationAngle = 0f // Reset rotation
+                                    },
+                                    modifier = Modifier.size(56.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.ArrowForward,
+                                        contentDescription = "Next Card",
+                                        modifier = Modifier.size(56.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
                                 }
-                            )
+                                Text("Next", fontSize = 12.sp)
+                            }
                         }
                     }
                 }
             }
-
-            // Exit Quiz button below card view and navigation buttons
-            Button(
-                onClick = { onExitQuiz() },
-                modifier = Modifier
-                    .padding(8.dp)
-                    .align(Alignment.CenterHorizontally) // Center align the button
-            ) {
-                Text(text = "Exit Quiz Mode")
-            }
         }
-    }
+    )
 }
+
 
 
 
