@@ -78,7 +78,10 @@ class MainActivity : ComponentActivity() {
 
         val decks = mutableStateListOf<FlashDeck>()
 
+        //If decks are able to be retrieved, clear the current deck list and add all of the decks from the database to the list
+        //This ensures that the list of decks shown to the user is up to date with the database
         getDecks(onSuccess = { fetchedDecks ->
+            decks.clear()
             decks.addAll(fetchedDecks)
             }, onFailure = { exception ->
                 Log.e("Firestore", "Error retrieving decks", exception)
@@ -148,7 +151,11 @@ fun HomeScreen(decks: SnapshotStateList<FlashDeck>, navController: NavHostContro
                     DeckView(deck = deck,
                         onDeckClick = {navController.navigate("flashcards/${deck.name}")},
                         onEditClick = { /* Handle edit action */ },
-                        onDeleteClick = {  }
+                        onDeleteClick = { deleteDeck(
+                            deck.name,
+                            onSuccess = { Log.d("Firestore", "Deck deleted successfully") },
+                            onFailure = { exception -> Log.e("Firestore", "Error deleting deck", exception) }
+                        ) }
                     )
                 }
             }
@@ -361,6 +368,7 @@ fun DeckDetailView(deck: FlashDeck, onBack: () -> Unit) {
     var deckId by remember { mutableStateOf("") }
     var isInQuizMode by remember { mutableStateOf(false) }
 
+    //Obtains the deckId from the deck name when the view is launched
     LaunchedEffect(deck.name) {
         getDeckIdByName(deck.name, onSuccess = { id ->
             deckId = id
@@ -369,6 +377,7 @@ fun DeckDetailView(deck: FlashDeck, onBack: () -> Unit) {
         })
     }
 
+    //Uses the deckId previously obtained and calls getCardsForDeck to retrieve all the cards associated with the deck
     LaunchedEffect(deckId) {
         getCardsForDeck(deckId, onSuccess = { fetchedCards ->
             cards = fetchedCards
