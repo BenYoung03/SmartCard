@@ -71,7 +71,7 @@ fun getDecks(onSuccess: (List<FlashDeck>) -> Unit, onFailure: (Exception) -> Uni
 }
 
 //Function for getting the cards for a given deck
-fun getCardsForDeck(deckId: String, onSuccess: (List<FlashCard>) -> Unit, onFailure: (Exception) -> Unit) {
+fun getCardsForDeck(deckId: String, quizView: Boolean, onSuccess: (List<FlashCard>) -> Unit, onFailure: (Exception) -> Unit) {
     //Gets the flashcards collection from the firestore database
     db.collection("flashcards")
         //Finds all flashcards that are associated with the current deck by comparing deckId
@@ -91,8 +91,13 @@ fun getCardsForDeck(deckId: String, onSuccess: (List<FlashCard>) -> Unit, onFail
                         deckId = document.getString("deckId") ?: ""
                     )
                 }
-                //Passes the cards back to the main activity if successful
-                onSuccess(cards)
+                if(quizView){
+                    val cardsShuffled = cards.shuffled()
+                    onSuccess(cardsShuffled)
+                }  else {
+                    //Passes the list of cards back to the main activity if successful
+                    onSuccess(cards)
+                }
             } else {
                 Log.d("Firestore", "Current data: null")
             }
