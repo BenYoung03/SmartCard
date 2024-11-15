@@ -71,37 +71,41 @@ fun getDecks(onSuccess: (List<FlashDeck>) -> Unit, onFailure: (Exception) -> Uni
 }
 
 //Function for getting the cards for a given deck
-fun getCardsForDeck(deckId: String, quizView: Boolean, onSuccess: (List<FlashCard>) -> Unit, onFailure: (Exception) -> Unit) {
+fun getCardsForDeck(deckName: String, quizView: Boolean, onSuccess: (List<FlashCard>) -> Unit, onFailure: (Exception) -> Unit) {
     //Gets the flashcards collection from the firestore database
-    db.collection("flashcards")
-        //Finds all flashcards that are associated with the current deck by comparing deckId
-        .whereEqualTo("deckId", deckId)
-        .addSnapshotListener() { snapshot, e ->
-            if (e != null) {
-                onFailure(e)
-                return@addSnapshotListener
-            }
+    getDeckIdByName(deckName, onSuccess = { id ->
+        db.collection("flashcards")
+            //Finds all flashcards that are associated with the current deck by comparing deckId
+            .whereEqualTo("deckId", id)
+            .addSnapshotListener() { snapshot, e ->
+                if (e != null) {
+                    onFailure(e)
+                    return@addSnapshotListener
+                }
 
-            if (snapshot != null) {
-                //Creates a list of flashcard objects which contains all of the flashcards associated with the current deck
-                val cards = snapshot.documents.map { document ->
-                    FlashCard(
-                        question = document.getString("question") ?: "",
-                        answer = document.getString("answer") ?: "",
-                        deckId = document.getString("deckId") ?: ""
-                    )
+                if (snapshot != null) {
+                    //Creates a list of flashcard objects which contains all of the flashcards associated with the current deck
+                    val cards = snapshot.documents.map { document ->
+                        FlashCard(
+                            question = document.getString("question") ?: "",
+                            answer = document.getString("answer") ?: "",
+                            deckId = document.getString("deckId") ?: ""
+                        )
+                    }
+                    if(quizView){
+                        val cardsShuffled = cards.shuffled()
+                        onSuccess(cardsShuffled)
+                    }  else {
+                        //Passes the list of cards back to the main activity if successful
+                        onSuccess(cards)
+                    }
+                } else {
+                    Log.d("Firestore", "Current data: null")
                 }
-                if(quizView){
-                    val cardsShuffled = cards.shuffled()
-                    onSuccess(cardsShuffled)
-                }  else {
-                    //Passes the list of cards back to the main activity if successful
-                    onSuccess(cards)
-                }
-            } else {
-                Log.d("Firestore", "Current data: null")
             }
-        }
+    }, onFailure = { exception ->
+        Log.e("Firestore", "Error retrieving deck ID", exception)
+    })
 }
 
 //Function for getting the deckId from the name of the deck
@@ -156,6 +160,26 @@ fun deleteDeck(deckName:String, onSuccess: (String) -> Unit, onFailure: (Excepti
             }
             .addOnFailureListener { exception ->
                 onFailure(exception)
+            }
+    }, onFailure = { exception ->
+        Log.e("Firestore", "Error retrieving deck ID", exception)
+    })
+}
+
+fun updateDeck(deckName: String, deckDescription: String, deckNameNew: String) {
+    //Calls getDeckIdByName to get the deckId of the deck to be updated given then name
+    getDeckIdByName(deckName, onSuccess = { id ->
+        //Gets the flashdeck collection
+        db.collection("flashdecks")
+            //Finds the document that matches the ID obtained from getDeckIdByName
+            .document(id)
+            //Updates the document with the new deck description and deck name
+            .update("name", deckName, "description", deckDescription)
+            .addOnSuccessListener {
+                Log.d("Firestore", "Flashcard edited with ID: $id")
+            }
+            .addOnFailureListener { exception ->
+                Log.w("Firestore", "Error adding flashcard", exception)
             }
     }, onFailure = { exception ->
         Log.e("Firestore", "Error retrieving deck ID", exception)

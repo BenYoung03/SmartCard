@@ -153,7 +153,7 @@ fun HomeScreen(decks: SnapshotStateList<FlashDeck>, navController: NavHostContro
                 items(decks) { deck ->
                     DeckView(deck = deck,
                         onDeckClick = {navController.navigate("flashcards/${deck.name}")},
-                        onEditClick = { /* Handle edit action */ },
+                        //Calls the delete deck function from Firebase.kt which deletes the deck from the database
                         onDeleteClick = { deleteDeck(
                             deck.name,
                             onSuccess = { Log.d("Firestore", "Deck deleted successfully") },
@@ -164,10 +164,7 @@ fun HomeScreen(decks: SnapshotStateList<FlashDeck>, navController: NavHostContro
             }
 
             NewDeck(
-                modifier = Modifier.padding(top = 25.dp),
-                onAddDeck = { name, description ->
-                    decks.add(FlashDeck(name, description))
-                }
+                modifier = Modifier.padding(top = 25.dp)
             )
         }
     }
@@ -176,7 +173,6 @@ fun HomeScreen(decks: SnapshotStateList<FlashDeck>, navController: NavHostContro
 @Composable
 fun NewDeck(
     modifier: Modifier = Modifier,
-    onAddDeck: (String, String) -> Unit
 ) {
     var inputDeck by remember { mutableStateOf(false) }
     var deckDescription by remember { mutableStateOf("") }
@@ -234,7 +230,6 @@ fun NewDeck(
 
                     Button(
                         onClick = {
-                            onAddDeck(deckName, deckDescription)
                             //Firestore storage of deck
                             addDeck(deckName, deckDescription)
                             inputDeck = false
@@ -254,8 +249,12 @@ fun NewDeck(
 }
 
 @Composable
-fun DeckView(deck: FlashDeck, onDeckClick: () -> Unit, onEditClick: () -> Unit, onDeleteClick: () -> Unit) {
+fun DeckView(deck: FlashDeck, onDeckClick: () -> Unit, onDeleteClick: () -> Unit) {
     var expanded by remember { mutableStateOf(false) } // State to control dropdown menu
+    // For the edit functionality
+    var editDeck by remember { mutableStateOf(false) }
+    var deckName by remember { mutableStateOf(deck.name) }
+    var deckDescription by remember { mutableStateOf(deck.description) }
 
     Card(
         modifier = Modifier
@@ -298,69 +297,85 @@ fun DeckView(deck: FlashDeck, onDeckClick: () -> Unit, onEditClick: () -> Unit, 
             ) {
                 DropdownMenuItem(
                     text = { Text("Edit") },
+                    // Make editDeck true to show the edit dialog
                     onClick = {
                         expanded = false
-                        onEditClick() //add edit functionality
+                        editDeck = true
                     }
                 )
                 DropdownMenuItem(
                     text = { Text("Delete") },
                     onClick = {
                         expanded = false
-                        onDeleteClick() //add delete functionality
+                        onDeleteClick() // Calls the delete function from Firebase.kt
                     }
                 )
             }
         }
     }
+
+    if(editDeck){
+        androidx.compose.ui.window.Dialog(
+            onDismissRequest = { editDeck = false }
+        ) {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.surface,
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Create New Deck",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    TextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        value = deckName,
+                        onValueChange = { deckName = it },
+                        placeholder = { Text(text = "Title of your deck") },
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    TextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        value = deckDescription,
+                        onValueChange = { deckDescription = it },
+                        placeholder = { Text(text = "e.g. This is what the deck is about") },
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Button(
+                        onClick = {
+                            //Calls update deck with the current deck name and the new deckName and deckDescription
+                            updateDeck(deck.name, deckDescription, deckName)
+                            editDeck = false
+                            deckName = ""
+                            deckDescription = ""
+                        }
+                    ) {
+                        Text(text = "Confirm")
+                    }
+
+                }
+
+            }
+
+        }
+    }
+
+
 }
-
-
-//    @Composable
-//    fun FlashcardScreen(deck: FlashDeck, flashcards: SnapshotStateList<Flashcard>) {
-//        val curFlashcards = flashcards.filter { it.curDeck == deck }
-//        Column(
-//            modifier = Modifier
-//                .fillMaxSize()
-//                .padding(16.dp)
-//                .padding(top = 30.dp),
-//            horizontalAlignment = Alignment.CenterHorizontally
-//
-//        ) {
-//            Text(
-//                text = "Flashcards for ${deck.name}",
-//                fontSize = 24.sp,
-//                fontWeight = FontWeight.Bold,
-//                textAlign = TextAlign.Center
-//            )
-//
-//            LazyColumn {
-//                items(curFlashcards) { flashcard ->
-//                    var currentText by remember { mutableStateOf(flashcard.front) }
-//                    Box(
-//                        modifier = Modifier
-//                            .size(300.dp)
-//                            .padding(16.dp)
-//                            .border(width = 4.dp, color = Gray, shape = RoundedCornerShape(16.dp))
-//                            .background(color = DarkGray, shape = RoundedCornerShape(16.dp))
-//                            .clickable {
-//                                currentText =
-//                                    if (currentText == flashcard.front) flashcard.back else flashcard.front
-//                            },
-//                        contentAlignment = Alignment.Center
-//                    ) {
-//                        Text(
-//                            text = currentText,
-//                            modifier = Modifier.padding(16.dp),
-//                            textAlign = TextAlign.Center,
-//                            fontSize = 25.sp,
-//                            color = Color.White
-//                        )
-//                    }
-//                }
-//            }
-//        }
-//    }
 
 //aka. FlashCardView screen (all flashcards from deck)
 //material13 experimental for TopAppBar to work
@@ -371,19 +386,11 @@ fun DeckDetailView(deck: FlashDeck, onBack: () -> Unit) {
     var cardQuestion by remember { mutableStateOf("") }
     var cardAnswer by remember { mutableStateOf("") }
     var cards by remember { mutableStateOf(listOf<FlashCard>()) }
-    var deckId by remember { mutableStateOf("") }
     var isInQuizMode by remember { mutableStateOf(false) }
 
+    //calls getCardsForDeck to get all the cards in the deck
     LaunchedEffect(deck.name) {
-        getDeckIdByName(deck.name, onSuccess = { id ->
-            deckId = id
-        }, onFailure = { exception ->
-            Log.e("Firestore", "Error retrieving deck ID", exception)
-        })
-    }
-
-    LaunchedEffect(deckId) {
-        getCardsForDeck(deckId, false, onSuccess = { fetchedCards ->
+        getCardsForDeck(deck.name, false, onSuccess = { fetchedCards ->
             cards = fetchedCards
         }, onFailure = { exception ->
             Log.e("Firestore", "Error retrieving cards", exception)
@@ -466,7 +473,9 @@ fun DeckDetailView(deck: FlashDeck, onBack: () -> Unit) {
                                     Spacer(modifier = Modifier.height(16.dp))
 
                                     Button(onClick = {
+                                        //Gets the deckId of the current deck
                                         getDeckIdByName(deck.name, onSuccess = { deckId ->
+                                            //Adds the card to firestore using the inputted values and deckId
                                             addCard(cardQuestion, cardAnswer, deckId)
                                             inputCard = false
                                             cardQuestion = ""
@@ -595,14 +604,9 @@ fun QuizModeView(deck: FlashDeck, onExitQuiz: () -> Unit, onBack: () -> Unit) {
         animationSpec = tween(durationMillis = 600)
     )
 
-    // Load deck ID and cards
+    //Gets the cards for the deck and shuffles them because its in quiz view
     LaunchedEffect(deck.name) {
-        getDeckIdByName(deck.name, onSuccess = { id -> deckId = id }, onFailure = { exception ->
-            Log.e("Firestore", "Error retrieving deck ID", exception)
-        })
-    }
-    LaunchedEffect(deckId) {
-        getCardsForDeck(deckId, true, onSuccess = { fetchedCards -> cards = fetchedCards }, onFailure = { exception ->
+        getCardsForDeck(deck.name, true, onSuccess = { fetchedCards -> cards = fetchedCards }, onFailure = { exception ->
             Log.e("Firestore", "Error retrieving cards", exception)
         })
     }
