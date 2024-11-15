@@ -253,8 +253,8 @@ fun DeckView(deck: FlashDeck, onDeckClick: () -> Unit, onDeleteClick: () -> Unit
     var expanded by remember { mutableStateOf(false) } // State to control dropdown menu
     // For the edit functionality
     var editDeck by remember { mutableStateOf(false) }
-    var deckName by remember { mutableStateOf(deck.name) }
-    var deckDescription by remember { mutableStateOf(deck.description) }
+    var deckName by remember { mutableStateOf("") }
+    var deckDescription by remember { mutableStateOf("") }
 
     Card(
         modifier = Modifier
@@ -300,6 +300,8 @@ fun DeckView(deck: FlashDeck, onDeckClick: () -> Unit, onDeleteClick: () -> Unit
                     // Make editDeck true to show the edit dialog
                     onClick = {
                         expanded = false
+                        deckName = deck.name
+                        deckDescription = deck.description
                         editDeck = true
                     }
                 )

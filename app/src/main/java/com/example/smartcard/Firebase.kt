@@ -1,9 +1,11 @@
 package com.example.smartcard
 
+import android.annotation.SuppressLint
 import android.util.Log
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
 
+@SuppressLint("StaticFieldLeak") //Android studio editor suggested this change
 val db = Firebase.firestore
 
 //Add deck function
@@ -48,7 +50,7 @@ fun getDecks(onSuccess: (List<FlashDeck>) -> Unit, onFailure: (Exception) -> Uni
     //Gets the flashdecks collection from the firestore database
     db.collection("flashdecks")
         //Adds a snapshot listener to the collection which provides realtime updates from the database to the app
-    .addSnapshotListener() { snapshot, e ->
+    .addSnapshotListener { snapshot, e ->
         if (e != null) {
             onFailure(e)
             return@addSnapshotListener
@@ -77,7 +79,7 @@ fun getCardsForDeck(deckName: String, quizView: Boolean, onSuccess: (List<FlashC
         db.collection("flashcards")
             //Finds all flashcards that are associated with the current deck by comparing deckId
             .whereEqualTo("deckId", id)
-            .addSnapshotListener() { snapshot, e ->
+            .addSnapshotListener { snapshot, e ->
                 if (e != null) {
                     onFailure(e)
                     return@addSnapshotListener
