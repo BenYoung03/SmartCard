@@ -174,7 +174,7 @@ fun updateDeck(deckName: String, deckDescription: String, deckNameNew: String) {
             //Finds the document that matches the ID obtained from getDeckIdByName
             .document(id)
             //Updates the document with the new deck description and deck name
-            .update("name", deckName, "description", deckDescription)
+            .update("name", deckNameNew, "description", deckDescription)
             .addOnSuccessListener {
                 Log.d("Firestore", "Flashcard edited with ID: $id")
             }
