@@ -72,6 +72,7 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.DpOffset
 
 
 class MainActivity : ComponentActivity() {
@@ -86,9 +87,9 @@ class MainActivity : ComponentActivity() {
         getDecks(onSuccess = { fetchedDecks ->
             decks.clear()
             decks.addAll(fetchedDecks)
-            }, onFailure = { exception ->
-                Log.e("Firestore", "Error retrieving decks", exception)
-            })
+        }, onFailure = { exception ->
+            Log.e("Firestore", "Error retrieving decks", exception)
+        })
 
         setContent {
             SmartCardTheme {
@@ -114,7 +115,7 @@ class MainActivity : ComponentActivity() {
 }
 
 
-//material13 experimental for TopAppBar to work
+//material3 experimental for TopAppBar to work
 @OptIn(ExperimentalMaterial3Api::class)
 
 @Composable
@@ -131,7 +132,7 @@ fun HomeScreen(decks: SnapshotStateList<FlashDeck>, navController: NavHostContro
             )
         },
 
-    )
+        )
 
     { innerPadding ->
         Column(
@@ -385,12 +386,54 @@ fun DeckView(deck: FlashDeck, onDeckClick: () -> Unit, onDeleteClick: () -> Unit
 @Composable
 fun DeckDetailView(deck: FlashDeck, onBack: () -> Unit) {
     var inputCard by remember { mutableStateOf(false) }
+    var editCard by remember { mutableStateOf<FlashCard?>(null) } // Holds the card being edited
     var cardQuestion by remember { mutableStateOf("") }
     var cardAnswer by remember { mutableStateOf("") }
     var cards by remember { mutableStateOf(listOf<FlashCard>()) }
     var isInQuizMode by remember { mutableStateOf(false) }
 
-    //calls getCardsForDeck to get all the cards in the deck
+    //Functions connected to firebase to edit and delete cards
+    // Handle Edit Action
+    fun handleEdit(card: FlashCard) {
+        editCard = card
+        cardQuestion = card.question
+        cardAnswer = card.answer
+    }
+    // Handle Delete Action
+    fun handleDelete(card: FlashCard) {
+        deleteCard(
+            deckId = card.deckId,
+            question = card.question,
+            onSuccess = {
+                println("Card deleted: $it")
+                cards = cards.filterNot { it == card } // Update the local list of cards
+            },
+            onFailure = { exception -> println("Error: ${exception.message}") }
+        )
+    }
+
+    // Save the updated card
+    fun saveEditedCard() {
+        editCard?.let { card ->
+            updateCard(
+                deckId = card.deckId,
+                question = card.question,
+                newQuestion = cardQuestion,
+                newAnswer = cardAnswer,
+                onSuccess = {
+                    println("Card updated successfully")
+                    // Update the local list of cards
+                    cards = cards.map {
+                        if (it == card) it.copy(question = cardQuestion, answer = cardAnswer) else it
+                    }
+                    editCard = null // Close the dialog
+                },
+                onFailure = { exception -> println("Error updating card: ${exception.message}") }
+            )
+        }
+    }
+
+    // Launch Effect to Fetch Cards
     LaunchedEffect(deck.name) {
         getCardsForDeck(deck.name, false, onSuccess = { fetchedCards ->
             cards = fetchedCards
@@ -399,27 +442,20 @@ fun DeckDetailView(deck: FlashDeck, onBack: () -> Unit) {
         })
     }
 
+    // Quiz Mode or Default View
     if (isInQuizMode) {
-        QuizModeView(deck, onExitQuiz = { isInQuizMode = false },
-            onBack = { isInQuizMode = false })
+        QuizModeView(deck, onExitQuiz = { isInQuizMode = false }, onBack = { isInQuizMode = false })
     } else {
         Scaffold(
-            modifier = Modifier.fillMaxSize(),
             topBar = {
                 TopAppBar(
                     title = { Text(text = deck.name, color = Color.White, fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         IconButton(onClick = { onBack() }) {
-                            Icon(
-                                imageVector = Icons.Default.ArrowBack,
-                                contentDescription = "Back",
-                                tint = Color.White
-                            )
+                            Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back", tint = Color.White)
                         }
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary)
                 )
             },
             content = { innerPadding ->
@@ -428,16 +464,13 @@ fun DeckDetailView(deck: FlashDeck, onBack: () -> Unit) {
                         .fillMaxSize()
                         .padding(innerPadding)
                 ) {
-//                    Text(
-//                        text = "My Cards",
-//                        style = MaterialTheme.typography.headlineMedium,
-//                        modifier = Modifier.padding(12.dp)
-//                    )
-
-                    // Dialog for adding a new card
-                    if (inputCard) {
+                    // Dialog for Adding or Editing a Card
+                    if (inputCard || editCard != null) {
                         androidx.compose.ui.window.Dialog(
-                            onDismissRequest = { inputCard = false }
+                            onDismissRequest = {
+                                inputCard = false
+                                editCard = null
+                            }
                         ) {
                             Surface(
                                 shape = RoundedCornerShape(16.dp),
@@ -451,7 +484,7 @@ fun DeckDetailView(deck: FlashDeck, onBack: () -> Unit) {
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     Text(
-                                        text = "Create New Card",
+                                        text = if (editCard != null) "Edit Card" else "Create New Card",
                                         fontSize = 18.sp,
                                         fontWeight = FontWeight.Bold
                                     )
@@ -475,25 +508,27 @@ fun DeckDetailView(deck: FlashDeck, onBack: () -> Unit) {
                                     Spacer(modifier = Modifier.height(16.dp))
 
                                     Button(onClick = {
-                                        //Gets the deckId of the current deck
-                                        getDeckIdByName(deck.name, onSuccess = { deckId ->
-                                            //Adds the card to firestore using the inputted values and deckId
-                                            addCard(cardQuestion, cardAnswer, deckId)
-                                            inputCard = false
-                                            cardQuestion = ""
-                                            cardAnswer = ""
-                                        }, onFailure = { exception ->
-                                            Log.e("Firestore", "Error retrieving deck ID", exception)
-                                        })
+                                        if (editCard != null) {
+                                            saveEditedCard()
+                                        } else {
+                                            getDeckIdFromName(deck.name, onSuccess = { id ->
+                                                addCard(cardQuestion, cardAnswer, id)
+                                                inputCard = false
+                                                cardQuestion = ""
+                                                cardAnswer = ""
+                                            }, onFailure = { exception ->
+                                                Log.e("Firestore", "Error retrieving deck ID", exception)
+                                            })
+                                        }
                                     }) {
-                                        Text(text = "Add Card")
+                                        Text(text = if (editCard != null) "Save Changes" else "Add Card")
                                     }
                                 }
                             }
                         }
                     }
 
-                    // Row for "Add New Card" and "Study" buttons
+                    // Add New Card and Start Quiz Buttons
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -502,30 +537,30 @@ fun DeckDetailView(deck: FlashDeck, onBack: () -> Unit) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Button(
-                            onClick = { inputCard = true },
-                            modifier = Modifier.padding(end = 8.dp), // Add padding to separate buttons
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0x803700B3) // Set the background color here
-                            )
+                            onClick = { inputCard = true
+                                cardQuestion = "" // Reset fields for adding a new card
+                                cardAnswer = ""},
+                            modifier = Modifier.padding(end = 8.dp),
                         ) {
                             Text(text = "+ New Card")
                         }
 
                         Button(
                             onClick = { isInQuizMode = true },
-                            modifier = Modifier.padding(end = 8.dp), // Add padding to separate buttons
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0x803700B3) // Set the background color here
-                            )
+                            modifier = Modifier.padding(end = 8.dp),
                         ) {
                             Text(text = "Start Quiz")
                         }
                     }
 
-                    // Display list of cards
+                    // Display List of Cards
                     LazyColumn {
                         items(cards) { card ->
-                            CardView(card)
+                            CardView(
+                                card = card,
+                                onEdit = { handleEdit(it) },
+                                onDelete = { handleDelete(it) }
+                            )
                         }
                     }
                 }
@@ -534,14 +569,17 @@ fun DeckDetailView(deck: FlashDeck, onBack: () -> Unit) {
     }
 }
 
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CardView(card: FlashCard) {
+fun CardView(card: FlashCard, onEdit: (FlashCard) -> Unit, onDelete: (FlashCard) -> Unit) {
     var isQuestionVisible by remember { mutableStateOf(true) }
     var rotationAngle by remember { mutableStateOf(0f) }
     val animatedRotationAngle by animateFloatAsState(
         targetValue = rotationAngle,
         animationSpec = tween(durationMillis = 500)
     )
+    var expanded by remember { mutableStateOf(false) } // State for the dropdown menu
 
     Card(
         modifier = Modifier
@@ -557,38 +595,81 @@ fun CardView(card: FlashCard) {
             }
             .fillMaxWidth()
             .height(200.dp),
-        elevation = CardDefaults.cardElevation(8.dp), // Elevation so the card has a shadow
-        colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFF0F8FF)
-        )
+        elevation = CardDefaults.cardElevation(8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF0F8FF))
     ) {
-        Column(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+        Box(
+            modifier = Modifier.fillMaxSize()
         ) {
-            if (animatedRotationAngle % 360 < 90 || animatedRotationAngle % 360 > 270) {
-                Text(
-                    text = card.question,
-                    fontSize = 24.sp,
-                    modifier = Modifier.graphicsLayer {
-                        alpha = if (isQuestionVisible) 1f else 0f
-                    }
-                )
-            } else {
-                Text(
-                    text = card.answer,
-                    fontSize = 22.sp,
-                    modifier = Modifier.graphicsLayer {
-                        alpha = if (!isQuestionVisible) 1f else 0f
-                    }
-                )
+            // Card content
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                if (animatedRotationAngle % 360 < 90 || animatedRotationAngle % 360 > 270) {
+                    Text(
+                        text = card.question,
+                        fontSize = 24.sp,
+                        modifier = Modifier.graphicsLayer {
+                            alpha = if (isQuestionVisible) 1f else 0f
+                        }
+                    )
+                } else {
+                    Text(
+                        text = card.answer,
+                        fontSize = 22.sp,
+                        modifier = Modifier.graphicsLayer {
+                            alpha = if (!isQuestionVisible) 1f else 0f
+                        }
+                    )
+                }
+            }
+
+            // More options button
+            if (isQuestionVisible) {
+                IconButton(
+                    onClick = { expanded = true },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                ) {
+                    Icon(
+                        Icons.Default.MoreVert,
+                        contentDescription = "More options"
+                    )
+                }
+
+                // Dropdown menu for options
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false } ,
+                    offset = DpOffset(x = 250.dp, y = 0.dp)
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Edit") },
+                        onClick = {
+                            expanded = false
+                            onEdit(card) // Pass the card to the edit callback
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Delete") },
+                        onClick = {
+                            expanded = false
+                            onDelete(card) // Pass the card to the delete callback
+                        }
+                    )
+                }
             }
         }
     }
 }
+
+
+
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -757,7 +838,6 @@ fun QuizModeView(deck: FlashDeck, onExitQuiz: () -> Unit, onBack: () -> Unit) {
         }
     )
 }
-
 
 
 

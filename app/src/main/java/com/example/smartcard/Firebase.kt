@@ -75,7 +75,7 @@ fun getDecks(onSuccess: (List<FlashDeck>) -> Unit, onFailure: (Exception) -> Uni
 //Function for getting the cards for a given deck
 fun getCardsForDeck(deckName: String, quizView: Boolean, onSuccess: (List<FlashCard>) -> Unit, onFailure: (Exception) -> Unit) {
     //Gets the flashcards collection from the firestore database
-    getDeckIdByName(deckName, onSuccess = { id ->
+    getDeckIdFromName(deckName, onSuccess = { id ->
         db.collection("flashcards")
             //Finds all flashcards that are associated with the current deck by comparing deckId
             .whereEqualTo("deckId", id)
@@ -111,7 +111,7 @@ fun getCardsForDeck(deckName: String, quizView: Boolean, onSuccess: (List<FlashC
 }
 
 //Function for getting the deckId from the name of the deck
-fun getDeckIdByName(deckName: String, onSuccess: (String) -> Unit, onFailure: (Exception) -> Unit) {
+fun getDeckIdFromName(deckName: String, onSuccess: (String) -> Unit, onFailure: (Exception) -> Unit) {
     //Gets the flashdecks collection from the firestore database
     db.collection("flashdecks")
         //Finds all of the flash decks where the deckName passed is equal to the deckName in the database
@@ -135,7 +135,7 @@ fun getDeckIdByName(deckName: String, onSuccess: (String) -> Unit, onFailure: (E
 //Function for deleting decks
 fun deleteDeck(deckName:String, onSuccess: (String) -> Unit, onFailure: (Exception) -> Unit) {
     //Calls getDeckIdByName to get the deckId of the deck to be deleted given then name
-    getDeckIdByName(deckName, onSuccess = { id ->
+    getDeckIdFromName(deckName, onSuccess = { id ->
         //Gets the flashdeck collection
         db.collection("flashdecks")
             //Finds the document that matches the ID obtained from getDeckIdByName
@@ -170,7 +170,7 @@ fun deleteDeck(deckName:String, onSuccess: (String) -> Unit, onFailure: (Excepti
 
 fun updateDeck(deckName: String, deckDescription: String, deckNameNew: String) {
     //Calls getDeckIdByName to get the deckId of the deck to be updated given then name
-    getDeckIdByName(deckName, onSuccess = { id ->
+    getDeckIdFromName(deckName, onSuccess = { id ->
         //Gets the flashdeck collection
         db.collection("flashdecks")
             //Finds the document that matches the ID obtained from getDeckIdByName
@@ -186,4 +186,62 @@ fun updateDeck(deckName: String, deckDescription: String, deckNameNew: String) {
     }, onFailure = { exception ->
         Log.e("Firestore", "Error retrieving deck ID", exception)
     })
+}
+
+//For deleting cards
+fun deleteCard(deckId: String, question: String, onSuccess: (String) -> Unit, onFailure: (Exception) -> Unit) {
+    // Gets the flashcards collection
+    db.collection("flashcards")
+        // Finds the document where deckId matches and the question matches
+        .whereEqualTo("deckId", deckId)
+        .whereEqualTo("question", question)
+        .get()
+        .addOnSuccessListener { result ->
+            if (result.isEmpty) {
+                onFailure(Exception("Card not found"))
+            } else {
+                // Deletes the card
+                for (document in result) {
+                    document.reference.delete()
+                        .addOnSuccessListener {
+                            onSuccess("Card deleted successfully")
+                        }
+                        .addOnFailureListener { exception ->
+                            onFailure(exception)
+                        }
+                }
+            }
+        }
+        .addOnFailureListener { exception ->
+            onFailure(exception)
+        }
+}
+
+//For updating the content in the cards
+fun updateCard(deckId: String, question: String, newQuestion: String, newAnswer: String, onSuccess: (String) -> Unit, onFailure: (Exception) -> Unit) {
+    // Gets the flashcards collection
+    db.collection("flashcards")
+        // Find the document where deckId matches and the question matches
+        .whereEqualTo("deckId", deckId)
+        .whereEqualTo("question", question)
+        .get()
+        .addOnSuccessListener { result ->
+            if (result.isEmpty) {
+                onFailure(Exception("Card not found"))
+            } else {
+                for (document in result) {
+                    // Updates the flashcard's question and answer
+                    document.reference.update("question", newQuestion, "answer", newAnswer)
+                        .addOnSuccessListener {
+                            onSuccess("Card updated successfully")
+                        }
+                        .addOnFailureListener { exception ->
+                            onFailure(exception)
+                        }
+                }
+            }
+        }
+        .addOnFailureListener { exception ->
+            onFailure(exception)
+        }
 }
